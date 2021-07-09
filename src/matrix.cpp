@@ -5,49 +5,54 @@
 #include "matrix.h"
 
 // Constructors
-Matrix::Matrix () :
+Matrix::Matrix() :
     Matrix(0, 0) {
 }
 
-Matrix::Matrix (size_t rows, size_t columns) :
-    rows_(rows),
+Matrix::Matrix(size_t rows, size_t columns) :
+    rows_   (rows),
     columns_(columns),
-    matrix_(new mtx(rows, std::vector<double>(columns))) { // ?
+    matrix_ (new matrix_t[rows * columns]) { //, std::vector<double>(columns))) { // ?
 }
 
-Matrix::Matrix(size_t rows, size_t columns, double num) :
+Matrix::Matrix(size_t rows, size_t columns, matrix_t num) :
     Matrix(rows, columns) {
 
-    for(size_t i = 0; i < rows_; i++) {
-        std::vector<double>& this_row = (*this)[i];
-        for(size_t j = 0; j < columns_; j++)
+    for (size_t i = 0; i < rows_; i++) {
+        matrix_t* this_row = (*this)[i];
+
+        for (size_t j = 0; j < columns_; j++)
             this_row[j] = num;
     }
 }
 
-Matrix::Matrix (std::vector<double> column) :
+Matrix::Matrix(std::vector<matrix_t> column) :
     Matrix(static_cast<size_t>(column.size()), 1) {
 
-    for(size_t i = 0; i < this->getRows(); i++)
+    for (size_t i = 0; i < this->getRows(); i++)
         (*this)[i][0] = column[i];
 }
 
-Matrix::Matrix (const Matrix &m) :
+Matrix::Matrix(const Matrix &m) :
     Matrix(m.rows_, m.columns_) {
-    for(size_t i = 0; i < rows_; i++) {
-        std::vector<double>& this_row    = this->operator [](i);
-        const std::vector<double>& m_row = m[i];
 
-        for(size_t j = 0; j < columns_; j++)
+    for (size_t i = 0; i < rows_; i++) {
+        matrix_t* this_row = (*this)[i];
+        const matrix_t* m_row = m[i];
+
+        for (size_t j = 0; j < columns_; j++)
             this_row[j] = m_row[j];
     }
 }
 
-Matrix::Matrix (Matrix &&m) :
+Matrix::Matrix(Matrix &&m) :
     rows_    (m.rows_),
     columns_ (m.columns_),
     matrix_  (m.matrix_) {
-    m.matrix_ = nullptr;
+
+    m.rows_    = 0;
+    m.columns_ = 0;
+    m.matrix_  = nullptr;
 }
 
 // Gettersresult
@@ -66,11 +71,14 @@ size_t Matrix::size() const {
 // Operators
 const Matrix &Matrix::operator = (const Matrix &m) {
     delete matrix_;
+
     return *new (this) Matrix(m);
 }
 
 const Matrix &Matrix::operator = (Matrix &&m) {
     delete matrix_;
+    matrix_ = nullptr;
+
     return *new (this) Matrix(m);
 }
 
@@ -79,7 +87,7 @@ Matrix Matrix::operator * (const Matrix &m) const {
 }
 
 const Matrix& Matrix::operator *= (const Matrix& m) {
-    if(columns_ != m.rows_) {
+    if (columns_ != m.rows_) {
         std::cerr << __PRETTY_FUNCTION__
                   << ": can not multiply matrices with dimentions: "
                   << rows_ << "x" << columns_ << " and "
@@ -92,18 +100,25 @@ const Matrix& Matrix::operator *= (const Matrix& m) {
 
     new (this) Matrix (this_copy.rows_, m.columns_);
 
-    for(size_t row = 0; row < this_copy.rows_; row++) {
-        const std::vector<double>& copy_row = this_copy[row];
-        std::vector<double>&       this_row = (*this)[row];
+    for (size_t row = 0; row < this_copy.rows_; row++) {
+        const matrix_t* copy_row = this_copy[row];
+        matrix_t*       this_row = (*this)[row];
 
-        for(size_t col = 0; col < m.columns_; col++) {
-            this_row[col] = 0;
+        const matrix_t  copy_row_col = copy_row[0];
+        const matrix_t* m_row        = m[0];
 
-            for(size_t i = 0; i < this_copy.columns_; i++)
-                this_row[col] += copy_row[i] * (*m.matrix_)[i][col];
+        for (size_t col = 0; col < m.columns_; col++)
+            this_row[col] = copy_row_col * m_row[col];
+
+        for (size_t i = 1; i < this_copy.columns_; i++) {
+            const matrix_t  copy_row_col = copy_row[i];
+            const matrix_t* m_row        = m[i];
+
+            for (size_t col = 0; col < m.columns_; col++) {
+                this_row[col] += copy_row_col * m_row[col];
+            }
         }
     }
-
 
     return *this;
 }
@@ -115,19 +130,19 @@ Matrix operator * (const double num, const Matrix &m) {
 Matrix Matrix::operator * (const double num) const {
     Matrix result(rows_, columns_);
 
-    std::cout << "[DEBUG] " << __FUNCTION__ << " this:\n" << *this;
-    std::cout << "[DEBUG] " << __FUNCTION__ << " num:\n" << num;
+    //std::cout << "[DEBUG] " << __FUNCTION__ << " this:\n" << *this;
+    //std::cout << "[DEBUG] " << __FUNCTION__ << " num:\n" << num;
 
-    for(size_t row = 0; row < rows_; row++) {
-        std::vector<double>&       result_row = result[row];
-        const std::vector<double>& this_row   = (*this)[row];
+    for (size_t row = 0; row < rows_; row++) {
+        matrix_t*       result_row = result[row];
+        const matrix_t* this_row   = (*this)[row];
 
-         for(size_t col = 0; col < columns_; col++) {
+         for (size_t col = 0; col < columns_; col++) {
              result_row[col] = num * this_row[col];
          }
     }
 
-    std::cout << "[DEBUG] " << __FUNCTION__ << " result:\n" << result;
+    //std::cout << "[DEBUG] " << __FUNCTION__ << " result:\n" << result;
 
     return result;
 }
@@ -135,9 +150,9 @@ Matrix Matrix::operator * (const double num) const {
 Matrix Matrix::operator / (const double num) const {
     Matrix result(rows_, columns_);
 
-    for(size_t row = 0; row < rows_; row++) {
-        std::vector<double>&       result_row = result[row];
-        const std::vector<double>& this_row   = (*this)[row];
+    for (size_t row = 0; row < rows_; row++) {
+        matrix_t*       result_row = result[row];
+        const matrix_t* this_row   = (*this)[row];
 
          for(size_t col = 0; col < columns_; col++) {
              result_row[col] = num / this_row[col];
@@ -150,26 +165,26 @@ Matrix Matrix::operator / (const double num) const {
 // Define operator + and - (operand Matrix, double)
 #define DEFINE_PLUS_MINUS(OP) \
     const Matrix& Matrix::operator OP##= (const Matrix &m) { \
-        if(rows_ != m.rows_) {                               \
+        if (rows_ != m.rows_) {                              \
             std::cerr << __PRETTY_FUNCTION__ << ": "         \
                       << "Number of rows is not equal!"      \
                       << std::endl;                          \
             return *this;                                    \
         } \
           \
-        if(columns_ != m.columns_) { \
+        if (columns_ != m.columns_) {                      \
             std::cerr << __PRETTY_FUNCTION__ << ": "       \
                       << "Number of columns is not equal!" \
                       << std::endl;                        \
             return *this;                                  \
         } \
-                                                              \
-        for(size_t i = 0; i < rows_; i++) {                   \
-            std::vector<double>& this_row    = (*this)[i];    \
-            const std::vector<double>& m_row = m[i];          \
-                                                              \
-            for(size_t j = 0; j < columns_; j++) {            \
-                this_row[j] OP##= m_row[j];                   \
+                                                    \
+        for (size_t i = 0; i < rows_; i++) {        \
+            matrix_t* this_row    = (*this)[i];     \
+            const matrix_t* m_row = m[i];           \
+                                                    \
+            for (size_t j = 0; j < columns_; j++) { \
+                this_row[j] OP##= m_row[j];         \
             }          \
         }              \
                        \
@@ -183,11 +198,11 @@ Matrix Matrix::operator / (const double num) const {
     Matrix Matrix::operator OP (const double num) const {     \
         Matrix result(rows_, columns_);                       \
                                                               \
-        for(size_t i = 0; i < rows_; i++) {                   \
-            const std::vector<double>& this_row = (*this)[i]; \
-            std::vector<double>& res_row        = result[i];  \
+        for (size_t i = 0; i < rows_; i++) {                  \
+            const matrix_t* this_row = (*this)[i];            \
+            matrix_t* res_row        = result[i];             \
                                                               \
-            for(size_t j = 0; j < columns_; j++) {            \
+            for (size_t j = 0; j < columns_; j++) {           \
                 res_row[j] = this_row[j] OP num;              \
             }                                                 \
         }                                                     \
@@ -198,11 +213,11 @@ Matrix Matrix::operator / (const double num) const {
     Matrix operator OP (const double num, const Matrix& m) {  \
         Matrix result(m.rows_, m.columns_);                   \
                                                               \
-        for(size_t i = 0; i < m.rows_; i++) {                 \
-            const std::vector<double>& m_row = m[i];          \
-            std::vector<double>& res_row    = result[i];      \
+        for (size_t i = 0; i < m.rows_; i++) {                \
+            const matrix_t* m_row = m[i];                     \
+            matrix_t* res_row    = result[i];                 \
                                                               \
-            for(size_t j = 0; j < m.columns_; j++) {          \
+            for (size_t j = 0; j < m.columns_; j++) {         \
                 res_row[j] = num OP m_row[j];                 \
             }                                                 \
         }                                                     \
@@ -252,33 +267,56 @@ Matrix operator - (const Matrix &m) {
 
 
 // Get row
-std::vector<double>& Matrix::operator [] (int index) {
-    return (*matrix_)[index];
+matrix_t* Matrix::operator [] (int index) {
+    return matrix_ + columns_ * index;
 }
 
 // Get const row from const matrix
-const std::vector<double>& Matrix::operator [](int index) const {
-    return (*matrix_)[index];
+const matrix_t* Matrix::operator [] (int index) const {
+    return matrix_ + columns_ * index;
+}
+
+bool Matrix::operator == (const Matrix& m) const {
+    if (rows_ != m.rows_ || columns_ != m.columns_)
+        return false;
+
+    for (size_t i = 0; i < rows_; i++) {
+        const matrix_t* this_row = (*this)[i];
+        const matrix_t* m_row    = m[i];
+
+        for (size_t j = 0; j < columns_; j++) {
+            if (this_row[j] != m_row[j])
+                return false;
+        }
+    }
+
+    return true;
+}
+
+bool Matrix::operator != (const Matrix& m) const {
+    return !(*this == m);
 }
 
 std::ostream& operator << (std::ostream &os, const Matrix &m) {
-    for(size_t i = 0; i < m.rows_; i++) {
-        const std::vector<double>& curRow = m[i];
-        for(size_t j = 0; j < m.columns_; j++)
+    for (size_t i = 0; i < m.rows_; i++) {
+        const matrix_t* curRow = m[i];
+
+        for (size_t j = 0; j < m.columns_; j++)
             os << curRow[j] << " ";
         os << std::endl;
     }
+
     return os;
 }
 
 // Summary of matrix elements
-double Matrix::sum() const {
-    double result = 0;
+matrix_t Matrix::sum() const {
+    matrix_t result = 0;
 
-    for(size_t i = 0; i < rows_; i++) {
-        const std::vector<double>& curRow = (*this)[i];
+    for (size_t i = 0; i < rows_; i++) {
+        const matrix_t* curRow = (*this)[i];
 
-        for(size_t j = 0; j < columns_; j++)
+        for (size_t j = 0; j < columns_; j++)
             result += curRow[j];
     }
 
@@ -288,13 +326,13 @@ double Matrix::sum() const {
 Matrix Matrix::sum_X() const {
     Matrix result(rows_, 1);
 
-    for(size_t i = 0; i < matrix_->size(); i++) {
-        const std::vector<double>& curRow = (*this)[i];
+    for (size_t i = 0; i < rows_; i++) {
+        const matrix_t* curRow = (*this)[i];
 
-        double& result_i = result[i][0];
+        matrix_t& result_i = result[i][0];
         result_i = 0;
 
-        for(size_t j = 0; j < curRow.size(); j++)
+        for (size_t j = 0; j < columns_; j++)
             result_i += curRow[j];
     }
 
@@ -303,15 +341,15 @@ Matrix Matrix::sum_X() const {
 
 Matrix Matrix::sum_Y() const {
     Matrix result(1, columns_);
-    std::vector<double>& result_row = result[0];
+    matrix_t* result_row = result[0];
 
-    for(size_t j = 0; j < columns_; j++)
+    for (size_t j = 0; j < columns_; j++)
         result_row[j] = 0;
 
-    for(size_t i = 0; i < rows_; i++) {
-        const std::vector<double>& curRow = (*this)[i];
+    for (size_t i = 0; i < rows_; i++) {
+        const matrix_t* curRow = (*this)[i];
 
-        for(size_t j = 0; j < columns_; j++)
+        for (size_t j = 0; j < columns_; j++)
             result_row[j] += curRow[j];
     }
 
@@ -322,10 +360,10 @@ Matrix Matrix::sum_Y() const {
 Matrix Matrix::transpose() const {
     Matrix result(columns_, rows_);
 
-    for(size_t row = 0; row < rows_; row++) {
-        const std::vector<double>& this_row   = (*this)[row];
+    for (size_t row = 0; row < rows_; row++) {
+        const matrix_t* this_row   = (*this)[row];
 
-         for(size_t col = 0; col < columns_; col++) {
+         for (size_t col = 0; col < columns_; col++) {
              result[col][row] = this_row[col];
          }
     }
@@ -334,18 +372,20 @@ Matrix Matrix::transpose() const {
 }
 
 void Matrix::fillRandom() {
-    for(size_t i = 0; i < rows_; i++) {
-        std::vector<double>& this_row = (*this)[i];
-        for(size_t j = 0; j < columns_; j++)
+    for (size_t i = 0; i < rows_; i++) {
+        matrix_t* this_row = (*this)[i];
+
+        for (size_t j = 0; j < columns_; j++)
             this_row[j] = static_cast<double>(rand()) /
                     static_cast<double>(std::numeric_limits<int>::min());
     }
 }
 
 void Matrix::fillByNum(double num) {
-    for(size_t i = 0; i < rows_; i++) {
-        std::vector<double>& this_row = (*this)[i];
-        for(size_t j = 0; j < columns_; j++)
+    for (size_t i = 0; i < rows_; i++) {
+        matrix_t* this_row = (*this)[i];
+
+        for (size_t j = 0; j < columns_; j++)
             this_row[j] = num;
     }
 }
