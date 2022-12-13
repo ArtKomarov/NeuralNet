@@ -4,6 +4,7 @@
 
 struct MatrixTest : public ::testing::Test {
     Matrix* m_;
+
     virtual void SetUp() override {
         m_ = new Matrix();
     }

@@ -9,30 +9,26 @@ double sigmoid (double val) {
 
 Matrix sigmoid (const Matrix& m) {
     Matrix result(m.getRows(), m.getColumns());
-    for(size_t i = 0; i < m.getRows(); i++) {
-        std::vector<double> &resRow     = result[i];
-        const std::vector<double> &mRow = m[i];
 
-        for(size_t j = 0; j < m.getColumns(); j++)
-            resRow[j] = sigmoid(mRow[j]);
+    for (size_t i = 0; i < m.getRows(); i++)
+        for (size_t j = 0; j < m.getColumns(); j++)
+            result[i][j] = sigmoid(m[i][j]);
 
-    }
     return result;
 }
 
-Matrix derivativeSigmoid(const Matrix& W, const Matrix& X) {
+Matrix gradSigmoid(const Matrix& W, const Matrix& X) {
     Matrix y = sigmoid(X * W);
+
     return y * (1. - y.transpose()) * X; // X.transpose() -> X
 }
 
 Matrix funcToMatrix (const Matrix& m, double (*func)(double)) {
     Matrix result(m.getRows(), m.getColumns());
     for(size_t i = 0; i < m.getRows(); i++) {
-        std::vector<double> &resRow     = result[i];
-        const std::vector<double> &mRow = m[i];
 
         for(size_t j = 0; j < m.getColumns(); j++)
-            resRow[j] = (*func)(mRow[j]);
+            result[i][j] = (*func)(m[i][j]);
 
     }
     return result;

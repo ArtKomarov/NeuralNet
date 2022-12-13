@@ -10,9 +10,9 @@ Matrix::Matrix() :
 }
 
 Matrix::Matrix(size_t rows, size_t columns) :
-    rows_   (rows),
-    columns_(columns),
-    matrix_ (new matrix_t[rows * columns]) { //, std::vector<double>(columns))) { // ?
+    rows_    (rows),
+    columns_ (columns),
+    matrix_  (new matrix_t[rows * columns]) {
 }
 
 Matrix::Matrix(size_t rows, size_t columns, matrix_t num) :
@@ -123,11 +123,11 @@ const Matrix& Matrix::operator *= (const Matrix& m) {
     return *this;
 }
 
-Matrix operator * (const double num, const Matrix &m) {
+Matrix operator * (const matrix_t num, const Matrix &m) {
     return m * num;
 }
 
-Matrix Matrix::operator * (const double num) const {
+Matrix Matrix::operator * (const matrix_t num) const {
     Matrix result(rows_, columns_);
 
     //std::cout << "[DEBUG] " << __FUNCTION__ << " this:\n" << *this;
@@ -147,7 +147,7 @@ Matrix Matrix::operator * (const double num) const {
     return result;
 }
 
-Matrix Matrix::operator / (const double num) const {
+Matrix Matrix::operator / (const matrix_t num) const {
     Matrix result(rows_, columns_);
 
     for (size_t row = 0; row < rows_; row++) {
@@ -162,7 +162,7 @@ Matrix Matrix::operator / (const double num) const {
     return result;
 }
 
-// Define operator + and - (operand Matrix, double)
+// Define operator + and - (operand Matrix, matrix_t)
 #define DEFINE_PLUS_MINUS(OP) \
     const Matrix& Matrix::operator OP##= (const Matrix &m) { \
         if (rows_ != m.rows_) {                              \
@@ -195,7 +195,7 @@ Matrix Matrix::operator / (const double num) const {
         return Matrix(*this) OP##= m;                    \
     } \
       \
-    Matrix Matrix::operator OP (const double num) const {     \
+    Matrix Matrix::operator OP (const matrix_t num) const {     \
         Matrix result(rows_, columns_);                       \
                                                               \
         for (size_t i = 0; i < rows_; i++) {                  \
@@ -210,7 +210,7 @@ Matrix Matrix::operator / (const double num) const {
         return result;                                        \
     }                                                         \
                                                               \
-    Matrix operator OP (const double num, const Matrix& m) {  \
+    Matrix operator OP (const matrix_t num, const Matrix& m) {  \
         Matrix result(m.rows_, m.columns_);                   \
                                                               \
         for (size_t i = 0; i < m.rows_; i++) {                \
@@ -236,35 +236,6 @@ const Matrix &operator + (const Matrix &m) {
 Matrix operator - (const Matrix &m) {
     return (-1) * m;
 }
-
-
-//const Matrix& Matrix::operator += (const Matrix &m) {
-//    if(rows_ != m.rows_) {
-//        std::cerr << __PRETTY_FUNCTION__ << ": " << "Number of rows is not equal!" << std::endl;
-//        return *this;
-//    }
-
-//    if(columns_ != m.columns_) {
-//        std::cerr << __PRETTY_FUNCTION__ << ": " << "Number of columns is not equal!" << std::endl;
-//        return *this;
-//    }
-
-//    //Matrix result(rows_, columns_);
-
-//    for(size_t i = 0; i < rows_; i++) {
-//        std::vector<double>& this_row    = (*this)[i];
-//        const std::vector<double>& m_row = m[i];
-
-//        //std::vector<double>& res_row        = result[i];
-
-//        for(size_t j = 0; j < columns_; j++) {
-//            this_row[j] += m_row[j];
-//        }
-//    }
-
-//    return *this;
-//}
-
 
 // Get row
 matrix_t* Matrix::operator [] (int index) {
@@ -376,12 +347,12 @@ void Matrix::fillRandom() {
         matrix_t* this_row = (*this)[i];
 
         for (size_t j = 0; j < columns_; j++)
-            this_row[j] = static_cast<double>(rand()) /
-                    static_cast<double>(std::numeric_limits<int>::min());
+            this_row[j] = static_cast<matrix_t>(rand()) /
+                    static_cast<matrix_t>(std::numeric_limits<int>::min());
     }
 }
 
-void Matrix::fillByNum(double num) {
+void Matrix::fillByNum(matrix_t num) {
     for (size_t i = 0; i < rows_; i++) {
         matrix_t* this_row = (*this)[i];
 
@@ -397,4 +368,15 @@ Matrix::~Matrix() {
     delete matrix_;
 
     matrix_ = nullptr;
+}
+
+// Create diagonal matrix, where num on main diagonal
+Matrix Diagonal(size_t rows, matrix_t num) {
+    Matrix ret(rows, rows);
+
+    for (size_t i = 0; i < rows; i++) {
+       ret[i][i] = num;
+    }
+
+    return ret;
 }
